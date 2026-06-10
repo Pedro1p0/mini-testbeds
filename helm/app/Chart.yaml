@@ -1,0 +1,14 @@
+apiVersion: v2
+name: testbed-app
+description: Aplicação de demonstração do Mini Testbed - simula um ambiente de experimentação disponibilizado para pesquisadores
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - testbed
+  - kubernetes
+  - experimentacao
+  - rnp
+maintainers:
+  - name: Pedro Vitor
+    email: pedro1p0@outlook.com

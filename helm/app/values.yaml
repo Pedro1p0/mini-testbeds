@@ -1,0 +1,25 @@
+# Configurações da aplicação
+replicaCount: 2
+
+image:
+  repository: nginx
+  tag: "alpine"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+
+resources:
+  limits:
+    cpu: "200m"
+    memory: "128Mi"
+  requests:
+    cpu: "100m"
+    memory: "64Mi"
+
+# Label identificando o ambiente de experimentação
+labels:
+  environment: "experimentation"
+  project: "mini-testbed"
+  maintainer: "pedro-vitor"

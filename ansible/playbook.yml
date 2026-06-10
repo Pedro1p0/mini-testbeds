@@ -1,0 +1,46 @@
+---
+- name: Preparar ambiente Mini Testbed
+  hosts: localhost
+  connection: local
+  gather_facts: true
+
+  tasks:
+    - name: Verificar se Docker está instalado
+      command: docker --version
+      register: docker_check
+      changed_when: false
+
+    - name: Exibir versão do Docker
+      debug:
+        msg: "Docker encontrado: {{ docker_check.stdout }}"
+
+    - name: Verificar se kubectl está instalado
+      command: kubectl version --client
+      register: kubectl_check
+      changed_when: false
+
+    - name: Exibir versão do kubectl
+      debug:
+        msg: "kubectl encontrado: {{ kubectl_check.stdout }}"
+
+    - name: Verificar se kind está instalado
+      command: kind version
+      register: kind_check
+      changed_when: false
+
+    - name: Exibir versão do kind
+      debug:
+        msg: "kind encontrado: {{ kind_check.stdout }}"
+
+    - name: Verificar se Helm está instalado
+      command: helm version
+      register: helm_check
+      changed_when: false
+
+    - name: Exibir versão do Helm
+      debug:
+        msg: "Helm encontrado: {{ helm_check.stdout }}"
+
+    - name: Todas as dependências verificadas com sucesso
+      debug:
+        msg: "Ambiente pronto para provisionar o cluster!"
