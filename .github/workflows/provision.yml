@@ -1,0 +1,106 @@
+name: Mini Testbed Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Validar ambiente e chart
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clonar repositório
+        uses: actions/checkout@v3
+      - name: Instalar Ansible
+        run: pip install ansible --quiet
+      - name: Executar playbook Ansible
+        run: ansible-playbook -i ansible/inventory.ini ansible/playbook.yml
+      - name: Instalar Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.12.0
+      - name: Validar Helm chart
+        run: helm lint helm/app
+
+  provision:
+    name: Provisionar cluster e instalar app
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - name: Clonar repositório
+        uses: actions/checkout@v3
+      - name: Instalar kind
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+          kind version
+      - name: Instalar kubectl
+        uses: azure/setup-kubectl@v3
+      - name: Instalar Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.12.0
+      - name: Criar cluster Kubernetes
+        run: |
+          kind create cluster --config kind/cluster-config.yaml
+          kubectl cluster-info
+          kubectl get nodes
+      - name: Aguardar nós ficarem prontos
+        run: kubectl wait --for=condition=Ready nodes --all --timeout=120s
+      - name: Instalar aplicação via Helm
+        run: |
+          helm install meu-testbed helm/app
+          sleep 30
+          kubectl get pods
+      - name: Verificar deployment
+        run: |
+          kubectl rollout status deployment/meu-testbed-app
+          kubectl get pods -o wide
+          helm list
+
+  test:
+    name: Testar aplicação
+    runs-on: ubuntu-latest
+    needs: provision
+    steps:
+      - name: Clonar repositório
+        uses: actions/checkout@v3
+      - name: Instalar kind
+        run: |
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+      - name: Instalar kubectl
+        uses: azure/setup-kubectl@v3
+      - name: Instalar Helm
+        uses: azure/setup-helm@v3
+        with:
+          version: v3.12.0
+      - name: Recriar cluster para teste
+        run: |
+          kind create cluster --config kind/cluster-config.yaml
+          kubectl wait --for=condition=Ready nodes --all --timeout=120s
+      - name: Instalar aplicação
+        run: |
+          helm install meu-testbed helm/app
+          kubectl rollout status deployment/meu-testbed-app --timeout=60s
+      - name: Testar conectividade
+        run: |
+          kubectl run curl-test \
+            --image=curlimages/curl \
+            --rm -it \
+            --restart=Never \
+            -- curl -s http://meu-testbed-service:80 | grep "Welcome to nginx"
+          echo "Aplicação respondendo com sucesso!"
+      - name: Resumo final
+        run: |
+          echo "=== CLUSTER ==="
+          kubectl get nodes
+          echo "=== PODS ==="
+          kubectl get pods -o wide
+          echo "=== SERVICES ==="
+          kubectl get services
+          echo "=== HELM RELEASES ==="
+          helm list
